@@ -1,0 +1,79 @@
+=========================================================
+create jenkins server script
+
+sudo -i
+vi script.sh
+
+#!/bin/bash
+apt -y update && apt -y install docker.io
+hostnamectl set-hostname jenkins
+mkdir jenkins_home
+sudo chown -R 1000:1000 ./jenkins_home
+docker run -d \
+  --name jenkins \
+  -p 8080:8080 \
+  -v ./jenkins_home:/var/jenkins_home \
+  jenkins/jenkins
+
+chmod -R 755 ./script.sh
+
+./script.sh
+
+docker logs jenkins
+
+
+install this Plugin --- > pipeline stage view
+
+
+config agent on jenkins:
+Name: agent
+Description: agent for jobs
+Number of executors: 1
+Remote root directory: /var/jenkins_home
+Labels: docker
+Usage: Labels
+Launch method: firs option vith jar file
+Availability: keep this agent online as much as posible
+===========================================================
+
+
+create agent server
+
+sudo -i
+vi script.sh
+
+#!/bin/bash
+apt -y update && apt -y install docker.io
+hostnamectl set-hostname agent
+curl -sO http://44.243.107.147:8080/jnlpJars/agent.jar
+mkdir /var/jenkins_home
+chmod  -R 777 /var/jenkins_home/
+mv agent.jar /var/jenkins_home/
+cd /var/jenkins_home/
+chmod  -R 777 /var/jenkins_home/
+apt install -y openjdk-17-jre-headless
+cat<<EOF>>/etc/systemd/system/jenkins_agent.service
+[Unit]
+Description=Jenkins agent for docker related operations
+After=network.target
+
+
+[Service]
+User=root
+WorkingDirectory=/var/jenkins_home
+ExecStart=/bin/bash /var/jenkins_home/service.sh
+#Restart=always
+EOF
+
+chmod -R 755 ./script.sh
+
+./script.sh
+
+
+vi /var/jenkins_home/service.sh
+!#/bin/bash
+java -jar agent.jar -url http://44.243.107.147:8080/ -secret 009d3d5646d19a9316df54b80d74080932659aabe649ba28cb12d3657e26aaee -name agent -webSocket -workDir "/var/jenkins_home"
+chmod -R 755 /var/jenkins_home/service.sh
+systemctl daemon-reload
+systemctl start jenkins_agent.service
+systemctl status jenkins_agent.service
